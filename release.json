@@ -1,0 +1,7 @@
+{
+  "version": "0.0",
+  "releaseNotes": "",
+  "firmwareAssetUrl": "",
+  "windowsToolUrl": "https://www.pjrc.com/teensy/teensy_loader_cli_windows.zip",
+  "windowsToolExecutable": "teensy_loader_cli.exe"
+}
