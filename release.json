@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "releaseNotes": "https://github.com/Juanflpz/lasercontrol-mcb-fw-public/releases/tag/v1.0",
+  "version": "1.1",
+  "releaseNotes": "https://github.com/Juanflpz/lasercontrol-mcb-fw-public/releases/tag/v1.1",
   "firmwareAssetUrl": "",
   "windowsToolUrl": "https://www.pjrc.com/teensy/teensy_loader_cli_windows.zip",
   "windowsToolExecutable": "teensy_loader_cli.exe"
