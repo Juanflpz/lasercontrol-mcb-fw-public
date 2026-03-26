@@ -1,7 +1,7 @@
 {
-  "version": "1.5",
-  "releaseNotes": "https://github.com/Juanflpz/lasercontrol-mcb-fw-public/releases/tag/v1.5",
-  "firmwareAssetUrl": "https://github.com/Juanflpz/lasercontrol-mcb-fw-public/releases/download/v1.5/grblHAL_LS_Laser-v1.5.hex",
+  "version": "1.6",
+  "releaseNotes": "https://github.com/Juanflpz/lasercontrol-mcb-fw-public/releases/tag/v1.6",
+  "firmwareAssetUrl": "https://github.com/Juanflpz/lasercontrol-mcb-fw-public/releases/download/v1.6/grblHAL_LS_Laser-v1.6.hex",
   "windowsToolUrl": "https://www.pjrc.com/teensy/td_160/teensy-tools-1.60.0-windows.tar.zst",
   "windowsToolType": "teensy-tools",
   "windowsToolExecutable": "teensy_post_compile.exe",
