@@ -43,14 +43,11 @@ jobs:
 
           FW_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith(".hex")) | .browser_download_url' | head -n 1)
           NOTES_URL="https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
-
-          if [ -f release.json ]; then
-            TOOL_URL=$(jq -r '.windowsToolUrl // ""' release.json)
-            TOOL_EXEC=$(jq -r '.windowsToolExecutable // "teensy_loader_cli.exe"' release.json)
-          else
-            TOOL_URL="https://www.pjrc.com/teensy/teensy_loader_cli_windows.zip"
-            TOOL_EXEC="teensy_loader_cli.exe"
-          fi
+          TOOL_URL="https://www.pjrc.com/teensy/td_160/teensy-tools-1.60.0-windows.tar.zst"
+          TOOL_TYPE="teensy-tools"
+          TOOL_EXEC="teensy_post_compile.exe"
+          LOADER_EXEC="teensy.exe"
+          PORTS_EXEC="teensy_ports.exe"
 
           cat <<EOF > release.json
           {
@@ -58,7 +55,10 @@ jobs:
             "releaseNotes": "$NOTES_URL",
             "firmwareAssetUrl": "$FW_URL",
             "windowsToolUrl": "$TOOL_URL",
-            "windowsToolExecutable": "$TOOL_EXEC"
+            "windowsToolType": "$TOOL_TYPE",
+            "windowsToolExecutable": "$TOOL_EXEC",
+            "windowsToolLoaderExecutable": "$LOADER_EXEC",
+            "windowsToolPortsExecutable": "$PORTS_EXEC"
           }
           EOF
 
