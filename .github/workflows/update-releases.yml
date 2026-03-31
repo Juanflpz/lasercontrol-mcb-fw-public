@@ -22,13 +22,7 @@ jobs:
         with:
           tag_name: v${{ github.event.client_payload.version }}
           name: Release v${{ github.event.client_payload.version }}
-          body: |
-            ## What's New
-            ${{ github.event.client_payload.notes }}
-            
-            ## MCB firmware v${{ github.event.client_payload.version }}
-            
-            Firmware asset is ready for download.
+          body: ${{ github.event.client_payload.notes }}
           draft: false
           prerelease: false
         env:
@@ -36,31 +30,25 @@ jobs:
 
       - name: Update release.json metadata
         run: |
+          set -euo pipefail
+
           VERSION="${{ github.event.client_payload.version }}"
 
           RELEASE_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$VERSION")
 
-          FW_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith(".hex")) | .browser_download_url' | head -n 1)
+          FW_URL=$(echo "$RELEASE_DATA" | jq -er '.assets[] | select(.name | endswith(".hex")) | .browser_download_url' | head -n 1)
           NOTES_URL="https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
-          TOOL_URL="https://www.pjrc.com/teensy/td_160/teensy-tools-1.60.0-windows.tar.zst"
-          TOOL_TYPE="teensy-tools"
-          TOOL_EXEC="teensy_post_compile.exe"
-          LOADER_EXEC="teensy.exe"
-          PORTS_EXEC="teensy_ports.exe"
 
-          cat <<EOF > release.json
-          {
-            "version": "$VERSION",
-            "releaseNotes": "$NOTES_URL",
-            "firmwareAssetUrl": "$FW_URL",
-            "windowsToolUrl": "$TOOL_URL",
-            "windowsToolType": "$TOOL_TYPE",
-            "windowsToolExecutable": "$TOOL_EXEC",
-            "windowsToolLoaderExecutable": "$LOADER_EXEC",
-            "windowsToolPortsExecutable": "$PORTS_EXEC"
-          }
-          EOF
+          jq -n \
+            --arg version "$VERSION" \
+            --arg releaseNotes "$NOTES_URL" \
+            --arg firmwareAssetUrl "$FW_URL" \
+            '{
+              version: $version,
+              releaseNotes: $releaseNotes,
+              firmwareAssetUrl: $firmwareAssetUrl
+            }' > release.json
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
