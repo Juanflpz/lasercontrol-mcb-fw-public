@@ -1,8 +1,10 @@
 name: Update Public Firmware Release
 
 on:
-  repository_dispatch:
-    types: [new-firmware-release]
+  push:
+    branches: [main]
+    paths:
+      - 'artifacts/*.hex'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -16,15 +18,41 @@ jobs:
     steps:
       - name: Checkout public repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve artifact metadata
+        id: meta
+        run: |
+          set -euo pipefail
+
+          ARTIFACT_PATH=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -E '^artifacts/.*\.hex$' | head -n 1)
+          if [ -z "$ARTIFACT_PATH" ] || [ ! -f "$ARTIFACT_PATH" ]; then
+            echo "Could not resolve the pushed .hex artifact from commit $GITHUB_SHA"
+            exit 1
+          fi
+
+          FILE_NAME=$(basename "$ARTIFACT_PATH")
+          VERSION=$(echo "$FILE_NAME" | sed -E 's/^grblHAL_LS_Laser-v([0-9]+\.[0-9]+\.[0-9]+)\.hex$/\1/')
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$FILE_NAME" ]; then
+            echo "Could not resolve version from artifact name $FILE_NAME"
+            exit 1
+          fi
+
+          echo "ARTIFACT_PATH=$ARTIFACT_PATH" >> "$GITHUB_OUTPUT"
+          echo "FILE_NAME=$FILE_NAME" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.event.client_payload.version }}
-          name: Release v${{ github.event.client_payload.version }}
-          body: ${{ github.event.client_payload.notes }}
+          tag_name: v${{ steps.meta.outputs.VERSION }}
+          name: Release v${{ steps.meta.outputs.VERSION }}
+          body: Public firmware artifact mirror.
           draft: false
           prerelease: false
+          overwrite_files: true
+          files: ${{ steps.meta.outputs.ARTIFACT_PATH }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -32,12 +60,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          VERSION="${{ github.event.client_payload.version }}"
-
-          RELEASE_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          VERSION="${{ steps.meta.outputs.VERSION }}"
+          FILE_NAME="${{ steps.meta.outputs.FILE_NAME }}"
+          RELEASE_DATA=$(curl -fsSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$VERSION")
 
-          FW_URL=$(echo "$RELEASE_DATA" | jq -er '.assets[] | select(.name | endswith(".hex")) | .browser_download_url' | head -n 1)
+          FW_URL=$(echo "$RELEASE_DATA" | jq -er --arg fileName "$FILE_NAME" '.assets[] | select(.name == $fileName) | .browser_download_url' | head -n 1)
           NOTES_URL="https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
 
           jq -n \
@@ -53,5 +81,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add release.json
-          git commit -m "Update firmware release metadata to v$VERSION" || echo "No changes"
+
+          if git diff --cached --quiet; then
+            echo "No release.json changes to push."
+            exit 0
+          fi
+
+          git commit -m "Update firmware release metadata to v$VERSION"
           git push
