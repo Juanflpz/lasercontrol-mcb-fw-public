@@ -63,15 +63,12 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$VERSION")
 
           FW_URL=$(echo "$RELEASE_DATA" | jq -er --arg fileName "$FILE_NAME" '.assets[] | select(.name == $fileName) | .browser_download_url' | head -n 1)
-          NOTES_URL="https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
 
           jq -n \
             --arg version "$VERSION" \
-            --arg releaseNotes "$NOTES_URL" \
             --arg firmwareAssetUrl "$FW_URL" \
             '{
               version: $version,
-              releaseNotes: $releaseNotes,
               firmwareAssetUrl: $firmwareAssetUrl
             }' > release.json
 

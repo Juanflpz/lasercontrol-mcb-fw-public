@@ -1,5 +1,4 @@
 {
   "version": "1.3.0",
-  "releaseNotes": "https://github.com/Juanflpz/lasercontrol-mcb-fw-public/releases/tag/v1.3.0",
   "firmwareAssetUrl": "https://github.com/Juanflpz/lasercontrol-mcb-fw-public/releases/download/v1.3.0/grblHAL_LS_Laser-v1.3.0.hex"
 }
