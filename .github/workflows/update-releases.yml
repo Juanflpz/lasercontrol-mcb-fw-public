@@ -24,8 +24,7 @@ jobs:
           set -euo pipefail
 
           mapfile -t HEX_FILES < <(
-            git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'artifacts/*.hex' \
-            | grep -E '^artifacts/.*\.hex$' || true
+            git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'artifacts/*.hex'
           )
 
           if [ ${#HEX_FILES[@]} -eq 0 ]; then
@@ -47,7 +46,7 @@ jobs:
           fi
 
           FILE_NAME=$(basename "$ARTIFACT_PATH")
-          VERSION=$(echo "$FILE_NAME" | sed -nE 's/^grblHAL_LS_Laser-v([0-9]+\.[0-9]+\.[0-9]+)\.hex$/\1/p')
+          VERSION=$(sed -nE 's/^grblHAL_LS_Laser-v([0-9]+\.[0-9]+\.[0-9]+)\.hex$/\1/p' <<< "$FILE_NAME")
 
           if [ -z "$VERSION" ]; then
             echo "Could not resolve version from artifact name $FILE_NAME"
@@ -77,9 +76,7 @@ jobs:
           FILE_NAME="${{ steps.meta.outputs.FILE_NAME }}"
           RELEASE_ASSETS='${{ steps.release.outputs.assets }}'
 
-          FW_URL=$(echo "$RELEASE_ASSETS" \
-            | jq -er --arg fileName "$FILE_NAME" '.[] | select(.name == $fileName) | .browser_download_url' \
-            | head -n 1)
+          FW_URL=$(jq -er --arg fileName "$FILE_NAME" '.[] | select(.name == $fileName) | .browser_download_url' <<< "$RELEASE_ASSETS")
 
           jq -n \
             --arg version "$VERSION" \
