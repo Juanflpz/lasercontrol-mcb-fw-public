@@ -15,23 +15,36 @@ jobs:
     steps:
       - name: Checkout public repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Resolve artifact metadata
         id: meta
         run: |
           set -euo pipefail
 
-          ARTIFACT_PATH=$(git diff-tree --no-commit-id --name-only -r "$GITHUB_SHA" | grep -E '^artifacts/.*\.hex$' | head -n 1)
-          if [ -z "$ARTIFACT_PATH" ] || [ ! -f "$ARTIFACT_PATH" ]; then
-            echo "Could not resolve the pushed .hex artifact from commit $GITHUB_SHA"
+          mapfile -t HEX_FILES < <(git diff-tree --no-commit-id --name-only --diff-filter=AM -r "$GITHUB_SHA" -- 'artifacts/*.hex' || true)
+
+          if [ ${#HEX_FILES[@]} -eq 0 ]; then
+            echo "Could not resolve changed .hex artifact from commit $GITHUB_SHA"
+            exit 1
+          fi
+
+          if [ ${#HEX_FILES[@]} -gt 1 ]; then
+            echo "Expected exactly one changed .hex artifact in commit $GITHUB_SHA, found ${#HEX_FILES[@]}"
+            printf 'Files found:\n'
+            printf ' - %s\n' "${HEX_FILES[@]}"
+            exit 1
+          fi
+
+          ARTIFACT_PATH="${HEX_FILES[0]}"
+          if [ ! -f "$ARTIFACT_PATH" ]; then
+            echo "Resolved artifact path does not exist in workspace: $ARTIFACT_PATH"
             exit 1
           fi
 
           FILE_NAME=$(basename "$ARTIFACT_PATH")
-          VERSION=$(echo "$FILE_NAME" | sed -E 's/^grblHAL_LS_Laser-v([0-9]+\.[0-9]+\.[0-9]+)\.hex$/\1/')
-          if [ -z "$VERSION" ] || [ "$VERSION" = "$FILE_NAME" ]; then
+          VERSION=$(echo "$FILE_NAME" | sed -nE 's/^grblHAL_LS_Laser-v([0-9]+\.[0-9]+\.[0-9]+)\.hex$/\1/p')
+
+          if [ -z "$VERSION" ]; then
             echo "Could not resolve version from artifact name $FILE_NAME"
             exit 1
           fi
@@ -41,17 +54,15 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub release
+        id: release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ github.token }}
           tag_name: v${{ steps.meta.outputs.VERSION }}
           name: Release v${{ steps.meta.outputs.VERSION }}
           body_path: revisions.txt
-          draft: false
-          prerelease: false
           overwrite_files: true
           files: ${{ steps.meta.outputs.ARTIFACT_PATH }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update release.json metadata
         run: |
@@ -59,10 +70,11 @@ jobs:
 
           VERSION="${{ steps.meta.outputs.VERSION }}"
           FILE_NAME="${{ steps.meta.outputs.FILE_NAME }}"
-          RELEASE_DATA=$(curl -fsSL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$VERSION")
+          RELEASE_ASSETS='${{ steps.release.outputs.assets }}'
 
-          FW_URL=$(echo "$RELEASE_DATA" | jq -er --arg fileName "$FILE_NAME" '.assets[] | select(.name == $fileName) | .browser_download_url' | head -n 1)
+          FW_URL=$(echo "$RELEASE_ASSETS" \
+            | jq -er --arg fileName "$FILE_NAME" '.[] | select(.name == $fileName) | .browser_download_url' \
+            | head -n 1)
 
           jq -n \
             --arg version "$VERSION" \
