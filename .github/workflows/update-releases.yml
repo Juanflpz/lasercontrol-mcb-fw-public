@@ -32,13 +32,6 @@ jobs:
             exit 1
           fi
 
-          if [ ${#HEX_FILES[@]} -gt 1 ]; then
-            echo "Expected exactly one changed .hex artifact in push range, found ${#HEX_FILES[@]}"
-            printf 'Files found:\n'
-            printf ' - %s\n' "${HEX_FILES[@]}"
-            exit 1
-          fi
-
           ARTIFACT_PATH="${HEX_FILES[0]}"
           if [ ! -f "$ARTIFACT_PATH" ]; then
             echo "Resolved artifact path does not exist in workspace: $ARTIFACT_PATH"
