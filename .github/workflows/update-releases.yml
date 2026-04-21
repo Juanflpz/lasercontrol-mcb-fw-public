@@ -15,21 +15,26 @@ jobs:
     steps:
       - name: Checkout public repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Resolve artifact metadata
         id: meta
         run: |
           set -euo pipefail
 
-          mapfile -t HEX_FILES < <(git diff-tree --no-commit-id --name-only --diff-filter=AM -r "$GITHUB_SHA" -- 'artifacts/*.hex' || true)
+          mapfile -t HEX_FILES < <(
+            git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'artifacts/*.hex' \
+            | grep -E '^artifacts/.*\.hex$' || true
+          )
 
           if [ ${#HEX_FILES[@]} -eq 0 ]; then
-            echo "Could not resolve changed .hex artifact from commit $GITHUB_SHA"
+            echo "Could not resolve changed .hex artifact from push range ${{ github.event.before }}..${{ github.sha }}"
             exit 1
           fi
 
           if [ ${#HEX_FILES[@]} -gt 1 ]; then
-            echo "Expected exactly one changed .hex artifact in commit $GITHUB_SHA, found ${#HEX_FILES[@]}"
+            echo "Expected exactly one changed .hex artifact in push range, found ${#HEX_FILES[@]}"
             printf 'Files found:\n'
             printf ' - %s\n' "${HEX_FILES[@]}"
             exit 1
